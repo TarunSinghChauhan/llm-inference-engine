@@ -1,0 +1,89 @@
+[
+  {
+    "variant": "Q3_K_M",
+    "file_size_mb": 1644.3,
+    "p50_latency_ms": 9294.4,
+    "mean_latency_ms": 8085.1,
+    "tokens_per_sec": 14.03,
+    "outputs": [
+      {
+        "prompt": "Explain the difference between supervised and unsupervised learning.",
+        "output": "Provide an example of each.\nSupervised learning and unsupervised learning are two types of machine learning approaches used to train algorithms to make predictions or decisions. The main difference between them is the availability of labeled data during training.\n\nIn supervised learning, the algorithm is trained using labeled data, meaning the input data is paired with its corresponding correct output. The algorithm is then tested on a separate set of data to see how well it performs. An example of supervised learning is a classification problem where the training data consists of input examples and their corresponding correct output labels. For instance, training a model to classify emails as spam or not-spam using a"
+      },
+      {
+        "prompt": "Write a Python function to reverse a linked list.",
+        "output": "The function should accept a linked list as an input and return a reversed linked list. The function should be named `reverse_linked_list` and should take a single argument, `ll`, which is a linked list object.\n\nExample:\n```python\nll = LinkedList([1, 2, 3, 4, 5])\nreversed_ll = reverse_linked_list(ll)\nprint(reversed_ll)  # Output: [5, 4, 3, 2, 1]\n```\n\nConstraints:\n- The linked list contains at most 100 nodes.\n- The input linked list is not empty.\n- The"
+      },
+      {
+        "prompt": "What are the tradeoffs between REST and GraphQL?",
+        "output": "REST and GraphQL are both query-based web services, but they have different design philosophies and tradeoffs. Here are some key tradeoffs between REST and GraphQL:\n\n1. Query flexibility:\n- REST: Provides a fixed set of resources and predefined endpoints for each resource. Clients need to know the endpoints to access resources and make requests.\n- GraphQL: Allows clients to request any data they need, by sending a single query to a server. This makes it more flexible and efficient in retrieving data.\n\n2. Performance:\n- REST: Multiple requests are made to the server for each resource. This can lead to slower performance, as multiple round-trips"
+      },
+      {
+        "prompt": "Describe how a transformer's attention mechanism works.",
+        "output": "A transformer's attention mechanism is a crucial component that allows the model to focus on different parts of the input during the processing of sequences, such as sentences in natural language processing tasks. It's part of the transformer model, which is used in various applications like machine translation, text summarization, and question-answering.\n\nThe core of the attention mechanism is the computation of a weighted sum of elements from the input sequence based on their relevance to a particular position in the sequence. This is done in a way that emphasizes the most relevant elements while still retaining some information about the less relevant ones, thus capturing the context of the sequence.\n\nTo"
+      },
+      {
+        "prompt": "Summarize the causes of the 2008 financial crisis in three sentences.",
+        "output": "The 2008 financial crisis was primarily caused by a combination of factors including the housing market bubble, lax lending standards, the use of complex financial products such as mortgage-backed securities and derivatives, and the failure of regulatory bodies to adequately monitor and regulate the financial industry."
+      }
+    ]
+  },
+  {
+    "variant": "Q4_K_M",
+    "file_size_mb": 2007.4,
+    "p50_latency_ms": 7708.8,
+    "mean_latency_ms": 7367.0,
+    "tokens_per_sec": 16.56,
+    "outputs": [
+      {
+        "prompt": "Explain the difference between supervised and unsupervised learning.",
+        "output": "Supervised and unsupervised learning are two types of machine learning techniques. \n\nSupervised learning is a type of machine learning where the algorithm is trained on labeled data, meaning that the input data is paired with the correct output. The goal of supervised learning is to build a model that can accurately predict the output for new, unseen input data. Examples of supervised learning include classification and regression tasks. In classification tasks, the goal is to predict which category a new input belongs to, while in regression tasks, the goal is to predict a continuous output value.\n\nUnsupervised learning, on the other hand, is a type of machine learning where"
+      },
+      {
+        "prompt": "Write a Python function to reverse a linked list.",
+        "output": "The function should take the head of the linked list as input and return the new head of the reversed list. The linked list nodes have an integer value and a pointer to the next node. The function should handle cases where the input list is empty or has only one node. Ensure your solution handles linked list manipulation and pointer operations correctly.\n\nYour code should pass the following test case:\n```python\n# Example 1\nlinked_list = LinkedList()\nlinked_list.append(1)\nlinked_list.append(2)\nlinked_list.append(3)\nlinked_list.append(4)\nlinked_list.append(5)\nnew_head = reverse_linked_list(linked_list"
+      },
+      {
+        "prompt": "What are the tradeoffs between REST and GraphQL?",
+        "output": "REST and GraphQL are both popular web services and API design paradigms, but they have distinct differences and trade-offs. Here are some key tradeoffs between REST and GraphQL:\n\n1. Flexibility vs. Structure:\n   - REST: More flexible, allows for multiple endpoints and complex queries\n   - GraphQL: More structured, requires a single endpoint and a specific query language\n\n2. Performance:\n   - REST: Typically faster due to simpler query handling and caching\n   - GraphQL: Can be slower due to fetching all data upfront, but can be optimized with caching\n\n3. Data Fetching:\n   - REST: Fetches data as"
+      },
+      {
+        "prompt": "Describe how a transformer's attention mechanism works.",
+        "output": "A transformer's attention mechanism is a crucial component of the transformer model used in machine learning and natural language processing. It allows the model to weigh and prioritize the importance of different pieces of input information during the processing of data. The mechanism works by calculating a weighted sum of all the input elements, considering their positions and relevance to the current query.\n\nHere's a step-by-step explanation:\n\n1. **Query, Key, and Value Computation**: For each element in the input sequence, a query vector, key vector, and value vector are computed. These vectors are typically of the same length and contain the information to be considered for the attention mechanism"
+      },
+      {
+        "prompt": "Summarize the causes of the 2008 financial crisis in three sentences.",
+        "output": "The 2008 financial crisis was primarily caused by a combination of factors including lax lending standards, the housing bubble, risky mortgage-backed securities, and excessive leverage in the banking system. These conditions led to a significant increase in subprime defaults and a sharp decline in housing prices, ultimately triggering the collapse of major financial institutions and global economic turmoil. To address these issues, the government implemented measures such as bailouts and regulatory reforms, aiming to stabilize the financial system and prevent future crises."
+      }
+    ]
+  },
+  {
+    "variant": "Q8_0",
+    "file_size_mb": 3448.6,
+    "p50_latency_ms": 11647.9,
+    "mean_latency_ms": 11634.2,
+    "tokens_per_sec": 10.28,
+    "outputs": [
+      {
+        "prompt": "Explain the difference between supervised and unsupervised learning.",
+        "output": "Supervised learning and unsupervised learning are two types of machine learning algorithms that differ in their approach to training and the type of data they work with.\n\nSupervised learning is a type of machine learning where the algorithm is trained on a labeled dataset, meaning that the data has already been classified or categorized by a human expert. The goal of supervised learning is to learn the mapping from inputs to outputs, so that the algorithm can make predictions on new, unseen data. The algorithm is trained on a set of input-output pairs, and it learns to recognize patterns in the data so that it can make accurate predictions.\n\nFor example, a supervised learning"
+      },
+      {
+        "prompt": "Write a Python function to reverse a linked list.",
+        "output": "The function should take the head of the linked list as an argument and return the head of the reversed linked list.\n\n\n\n```python\ndef reverse_linked_list(head):\n    \"\"\"\n    Reverses a linked list in place.\n    \n    :param head: ListNode, the head of the linked list to be reversed.\n    :return: ListNode, the new head of the reversed linked list.\n    \"\"\"\n    previous = None\n    current = head\n    while current:\n        next_node = current.next\n        current.next = previous\n        previous = current\n        current = next_node\n    return previous\n\n# Helper function to create a linked"
+      },
+      {
+        "prompt": "What are the tradeoffs between REST and GraphQL?",
+        "output": "REST (Representational State Transfer) and GraphQL are two popular API architectures used for web services. While they both aim to provide a way for clients to interact with a server, they differ in their approach and offer different trade-offs. Here are some key tradeoffs between REST and GraphQL:\n\n**REST:**\n\n1. **Simpler and more straightforward**: REST is a more traditional API architecture that uses standard HTTP methods (GET, POST, PUT, DELETE) to communicate with the server.\n2. **Scales well for large, complex systems**: REST is well-suited for building large, complex systems with multiple endpoints and resources.\n3"
+      },
+      {
+        "prompt": "Describe how a transformer's attention mechanism works.",
+        "output": "A transformer's attention mechanism is a crucial component that enables the model to weigh and selectively attend to different parts of the input data when making predictions. The attention mechanism is inspired by the biological notion of selective attention, where an individual focuses on certain aspects of a scene while ignoring others.\n\nThe attention mechanism consists of two main components: the attention function and the positional encoding. The attention function combines the input data with the learned weights, while the positional encoding provides information about the relative positions of the input elements.\n\nThe attention function is defined as a weighted sum of the input features, where the weights are learned by the model. The input features are typically"
+      },
+      {
+        "prompt": "Summarize the causes of the 2008 financial crisis in three sentences.",
+        "output": "The 2008 financial crisis was primarily caused by a combination of factors, including the proliferation of subprime mortgages, the lack of regulation in mortgage markets, the collapse of Lehman Brothers, and the subsequent failure of other major financial institutions. These factors led to a rapid increase in the value of collateralized debt obligations (CDOs) and other complex financial products, which ultimately triggered a global financial crisis and recession."
+      }
+    ]
+  }
+]

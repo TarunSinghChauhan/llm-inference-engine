@@ -1,0 +1,6 @@
+venv/
+models/
+__pycache__/
+*.pyc
+benchmarks/results/*.json
+!benchmarks/results/quant_compare_*.json

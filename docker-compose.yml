@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  inference-engine:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_PATH=/app/models/qwen2.5-3b-instruct-q4_k_m.gguf
+      - N_GPU_LAYERS=20
+      - MAX_MODEL_LEN=4096
+      - N_BATCH=256
+    volumes:
+      - ./models:/app/models
+    depends_on:
+      - redis
+    # Requires NVIDIA container toolkit on the host + a CUDA-built image
+    # (see Dockerfile) for GPU offload. Without it, falls back to CPU.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
