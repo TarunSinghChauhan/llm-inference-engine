@@ -83,3 +83,24 @@ async def test_multiple_batches_processed_independently():
     assert r1 == "response-to-first"
     assert r2 == "response-to-second"
     assert len(engine.calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_worker_loop_handles_timeout_with_empty_queue_before_first_submit():
+    """Covers the empty-queue continue path (batcher.py line 87): the worker
+    wakes up on its wait_for timeout before anything has been submitted,
+    finds an empty queue, and loops again without error. A later submit
+    still gets processed correctly afterward."""
+    engine = FakeEngine()
+    batcher = RequestBatcher(engine, max_batch_size=10, max_wait_ms=5)
+    batcher.start()
+
+    # Let at least one full timeout cycle elapse with nothing queued yet,
+    # so the worker hits the "if not self._queue: continue" branch.
+    await asyncio.sleep(0.02)
+
+    result = await batcher.submit("late-prompt")
+
+    await batcher.stop()
+    assert result == "response-to-late-prompt"
+    assert engine.calls == [["late-prompt"]]
