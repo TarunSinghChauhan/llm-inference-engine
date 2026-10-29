@@ -10,6 +10,7 @@ Usage:
 
 import argparse
 import asyncio
+import math
 import time
 import json
 import statistics
@@ -26,24 +27,58 @@ PROMPTS = [
 ]
 
 
+def percentile(sorted_values: list, pct: float) -> float:
+    """Nearest-rank percentile of an ascending list (pct in 0-100)."""
+    rank = math.ceil(pct / 100 * len(sorted_values))
+    return sorted_values[max(rank, 1) - 1]
+
+
 async def fire_request(client: httpx.AsyncClient, prompt: str) -> dict:
-    start = time.time()
-    resp = await client.post(
-        "/generate",
-        json={"prompts": [prompt], "max_tokens": 128},
-        timeout=120.0,
-    )
-    wall_ms = (time.time() - start) * 1000
-    data = resp.json()
+    start = time.perf_counter()
+    try:
+        resp = await client.post(
+            "/generate",
+            json={"prompts": [prompt], "max_tokens": 128},
+            timeout=120.0,
+        )
+    except httpx.HTTPError:
+        # Timeout / connection failure: count it as a failed request instead of
+        # letting one bad request abort the whole run.
+        return {
+            "wall_ms": (time.perf_counter() - start) * 1000,
+            "reported_latency_ms": None,
+            "status": 0,
+        }
+    wall_ms = (time.perf_counter() - start) * 1000
+    try:
+        reported = resp.json().get("latency_ms")
+    except (ValueError, AttributeError):
+        reported = None  # e.g. an HTML/plain-text 500 page
     return {
         "wall_ms": wall_ms,
-        "reported_latency_ms": data.get("latency_ms"),
+        "reported_latency_ms": reported,
         "status": resp.status_code,
+    }
+
+
+def summarize(results: list, concurrency: int, elapsed_s: float) -> dict:
+    wall_times = sorted(r["wall_ms"] for r in results if r["status"] == 200)
+    return {
+        "concurrency": concurrency,
+        "total_requests": len(results),
+        "successful": len(wall_times),
+        "failed": len(results) - len(wall_times),
+        "p50_ms": statistics.median(wall_times),
+        "p95_ms": percentile(wall_times, 95),
+        "p99_ms": percentile(wall_times, 99),
+        "mean_ms": statistics.mean(wall_times),
+        "throughput_req_per_sec": len(wall_times) / elapsed_s,
     }
 
 
 async def run(concurrency: int, total_requests: int, base_url: str):
     results = []
+    started = time.perf_counter()
     async with httpx.AsyncClient(base_url=base_url) as client:
         sem = asyncio.Semaphore(concurrency)
 
@@ -54,22 +89,13 @@ async def run(concurrency: int, total_requests: int, base_url: str):
                 results.append(r)
 
         await asyncio.gather(*[worker(i) for i in range(total_requests)])
+    elapsed_s = time.perf_counter() - started
 
-    wall_times = sorted(r["wall_ms"] for r in results if r["status"] == 200)
-    if not wall_times:
+    if not any(r["status"] == 200 for r in results):
         print("No successful requests — is the server running?")
         return
 
-    report = {
-        "concurrency": concurrency,
-        "total_requests": total_requests,
-        "successful": len(wall_times),
-        "p50_ms": statistics.median(wall_times),
-        "p95_ms": wall_times[int(len(wall_times) * 0.95) - 1],
-        "p99_ms": wall_times[int(len(wall_times) * 0.99) - 1],
-        "mean_ms": statistics.mean(wall_times),
-        "throughput_req_per_sec": len(wall_times) / (sum(wall_times) / 1000 / concurrency),
-    }
+    report = summarize(results, concurrency, elapsed_s)
 
     print(json.dumps(report, indent=2))
 
