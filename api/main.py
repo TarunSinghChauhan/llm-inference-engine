@@ -5,7 +5,7 @@ and /metrics. No external API calls — everything runs on local weights.
 """
 
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
@@ -33,9 +33,12 @@ app = FastAPI(title="Local Inference Engine", lifespan=lifespan)
 
 
 class GenerateRequest(BaseModel):
-    prompts: list[str] = Field(..., description="One or more prompts — batched automatically")
-    max_tokens: int = 256
-    temperature: float = 0.7
+    prompts: list[str] = Field(
+        ..., min_length=1, max_length=32,
+        description="One or more prompts — batched automatically",
+    )
+    max_tokens: int = Field(256, ge=1, le=4096)
+    temperature: float = Field(0.7, ge=0.0, le=2.0)
 
 
 class GenerateResponse(BaseModel):
@@ -52,10 +55,17 @@ async def generate(req: GenerateRequest):
     # Each prompt is submitted independently to the batcher — if other
     # requests are in flight at the same moment, they'll be grouped into
     # the same dispatch window (see batcher.py).
-    completions = await asyncio.gather(*[
-        batcher.submit(p, max_tokens=req.max_tokens, temperature=req.temperature)
-        for p in req.prompts
-    ])
+    try:
+        completions = await asyncio.gather(*[
+            batcher.submit(p, max_tokens=req.max_tokens, temperature=req.temperature)
+            for p in req.prompts
+        ])
+    except BaseException:
+        # Generation failed or the client went away (cancellation): give the slot back,
+        # otherwise the queue-depth counter leaks one per failed request.
+        with suppress(Exception):
+            await queue.track_abort(req_id)
+        raise
     completions = list(completions)
 
     latency_ms = await queue.track_end(req_id)

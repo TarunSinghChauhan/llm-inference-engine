@@ -48,6 +48,15 @@ class RequestQueue:
         await self._client.delete(f"inference:req:{req_id}")
         return latency_ms
 
+    async def track_abort(self, req_id: str) -> None:
+        """Release a request that failed or was cancelled before track_end.
+
+        Without this the depth counter stays incremented forever, so the queue-depth
+        metric drifts upward with every failed request.
+        """
+        await self._client.decr(QUEUE_KEY)
+        await self._client.delete(f"inference:req:{req_id}")
+
     async def current_depth(self) -> int:
         depth = await self._client.get(QUEUE_KEY)
         return int(depth) if depth else 0
