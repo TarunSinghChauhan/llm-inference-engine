@@ -85,30 +85,42 @@ class RequestBatcher:
             async with self._lock:
                 if not self._queue:
                     continue
-                batch = self._queue
-                self._queue = []
+                # Take at most max_batch_size requests; anything beyond that stays queued
+                # for the next dispatch (a burst used to be sent as one oversized batch).
+                batch = self._queue[: self.max_batch_size]
+                self._queue = self._queue[self.max_batch_size:]
+                if self._queue:
+                    self._batch_ready.set()  # leftovers have waited long enough already
 
-            if not batch:
-                continue
+            # Requests may differ in max_tokens / temperature. The engine takes one value
+            # of each per call, so dispatch one call per distinct (max_tokens, temperature)
+            # group instead of applying the first request's settings to everyone.
+            groups: dict[tuple, list[BatchRequest]] = {}
+            for req in batch:
+                groups.setdefault((req.max_tokens, req.temperature), []).append(req)
 
-            # Dispatch the whole batch as one call off the event loop.
-            # Internally this still loops prompt-by-prompt (see module
-            # docstring) but requests that arrived together are now
-            # scheduled together, cutting per-request overhead.
-            prompts = [r.prompt for r in batch]
-            try:
-                results = await loop.run_in_executor(
-                    None,
-                    lambda: self.engine.generate(
-                        prompts=prompts,
-                        max_tokens=batch[0].max_tokens,
-                        temperature=batch[0].temperature,
-                    ),
-                )
-                for req, result in zip(batch, results):
-                    if not req.future.done():
-                        req.future.set_result(result)
-            except Exception as e:
-                for req in batch:
-                    if not req.future.done():
-                        req.future.set_exception(e)
+            # Each group is one call off the event loop. Internally this still loops
+            # prompt-by-prompt (see module docstring) but requests that arrived together
+            # are scheduled together, cutting per-request overhead.
+            for (max_tokens, temperature), group in groups.items():
+                prompts = [r.prompt for r in group]
+                try:
+                    results = await loop.run_in_executor(
+                        None,
+                        lambda p=prompts, m=max_tokens, t=temperature: self.engine.generate(
+                            prompts=p, max_tokens=m, temperature=t
+                        ),
+                    )
+                    if len(results) != len(group):
+                        # zip() would silently drop the extra requests and leave their
+                        # futures pending forever.
+                        raise RuntimeError(
+                            f"engine returned {len(results)} results for {len(group)} prompts"
+                        )
+                    for req, result in zip(group, results):
+                        if not req.future.done():
+                            req.future.set_result(result)
+                except Exception as e:
+                    for req in group:
+                        if not req.future.done():
+                            req.future.set_exception(e)
