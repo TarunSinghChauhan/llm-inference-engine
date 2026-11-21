@@ -26,6 +26,15 @@ class EngineConfig:
     n_threads: int = int(os.getenv("N_THREADS", os.cpu_count() or 4))
     verbose: bool = False
 
+    @property
+    def model_name(self) -> str:
+        """File name of the loaded model, e.g. "qwen2.5-3b-instruct-q4_k_m.gguf".
+
+        /health reports this. It used to read config.model_name, which did not exist, so
+        every health check raised AttributeError and returned a 500.
+        """
+        return os.path.basename(self.model_path.replace("\\", "/"))
+
 
 class InferenceEngine:
     """Thin wrapper around llama-cpp-python's Llama object so the rest of
