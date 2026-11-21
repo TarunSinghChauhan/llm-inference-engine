@@ -4,18 +4,23 @@ Lightweight Redis-backed queue so we can observe queue depth / wait time
 under load — this is what feeds the p50/p99 dashboard later.
 """
 
+import os
 import time
 import json
 import uuid
 import redis.asyncio as redis
 
-REDIS_URL = "redis://localhost:6379/0"
+DEFAULT_REDIS_URL = "redis://localhost:6379/0"
+REDIS_URL = DEFAULT_REDIS_URL  # kept for existing imports
 QUEUE_KEY = "inference:queue_depth"
 
 
 class RequestQueue:
-    def __init__(self, redis_url: str = REDIS_URL):
-        self._redis_url = redis_url
+    def __init__(self, redis_url: str | None = None):
+        # The REDIS_URL environment variable wins over the localhost default. Inside
+        # docker-compose Redis is the host "redis", so a hard-coded localhost URL meant
+        # every /generate failed there as soon as it touched the queue.
+        self._redis_url = redis_url or os.getenv("REDIS_URL", DEFAULT_REDIS_URL)
         self._client: redis.Redis | None = None
 
     async def connect(self):

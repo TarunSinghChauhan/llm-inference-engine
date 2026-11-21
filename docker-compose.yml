@@ -15,6 +15,7 @@ services:
       - N_GPU_LAYERS=20
       - MAX_MODEL_LEN=4096
       - N_BATCH=256
+      - REDIS_URL=redis://redis:6379/0
     volumes:
       - ./models:/app/models
     depends_on:
