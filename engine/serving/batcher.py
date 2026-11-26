@@ -25,8 +25,16 @@ has been processed.
 """
 
 import asyncio
+import logging
 import time
+from contextlib import suppress
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
+
+
+class _ResultCountMismatch(RuntimeError):
+    """The engine broke its contract; retrying prompt by prompt would not fix that."""
 
 
 @dataclass
@@ -54,17 +62,34 @@ class RequestBatcher:
         self._lock = asyncio.Lock()
         self._batch_ready = asyncio.Event()
         self._worker_task: asyncio.Task | None = None
+        self._closed = False
 
     def start(self):
+        self._closed = False
         self._worker_task = asyncio.create_task(self._worker_loop())
 
     async def stop(self):
-        if self._worker_task:
-            self._worker_task.cancel()
+        """Stop the worker and fail everything that will now never be served.
+
+        Cancelling the worker used to leave its in-flight batch and everything still queued
+        with futures that never resolved, so those clients hung until their connection was
+        killed. Now they get an error straight away, and submit() refuses new work.
+        """
+        self._closed = True
+        task, self._worker_task = self._worker_task, None
+        if task:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+        async with self._lock:
+            pending, self._queue = self._queue, []
+        self._fail(pending, RuntimeError("Batcher stopped before this request was served"))
 
     async def submit(self, prompt: str, max_tokens: int = 256, temperature: float = 0.7) -> str:
         """Queue a prompt for batched generation. Returns the completion
         text once this request's batch has been processed."""
+        if self._closed:
+            raise RuntimeError("Batcher is stopped")
         req = BatchRequest(prompt=prompt, max_tokens=max_tokens, temperature=temperature)
         async with self._lock:
             self._queue.append(req)
@@ -102,25 +127,54 @@ class RequestBatcher:
             # Each group is one call off the event loop. Internally this still loops
             # prompt-by-prompt (see module docstring) but requests that arrived together
             # are scheduled together, cutting per-request overhead.
-            for (max_tokens, temperature), group in groups.items():
-                prompts = [r.prompt for r in group]
-                try:
-                    results = await loop.run_in_executor(
-                        None,
-                        lambda p=prompts, m=max_tokens, t=temperature: self.engine.generate(
-                            prompts=p, max_tokens=m, temperature=t
-                        ),
-                    )
-                    if len(results) != len(group):
-                        # zip() would silently drop the extra requests and leave their
-                        # futures pending forever.
-                        raise RuntimeError(
-                            f"engine returned {len(results)} results for {len(group)} prompts"
+            try:
+                for (max_tokens, temperature), group in groups.items():
+                    prompts = [r.prompt for r in group]
+                    try:
+                        results = await self._generate(loop, prompts, max_tokens, temperature)
+                        for req, result in zip(group, results):
+                            if not req.future.done():
+                                req.future.set_result(result)
+                    except Exception as e:
+                        if len(group) == 1 or isinstance(e, _ResultCountMismatch):
+                            self._fail(group, e)
+                            continue
+                        # One bad prompt (say, one longer than the context window) used to fail
+                        # every request that happened to share its batch, from unrelated clients.
+                        # Run them one by one so only the request that actually fails gets the error.
+                        logger.warning(
+                            "batch of %d failed (%s: %s); retrying its requests individually",
+                            len(group), type(e).__name__, e,
                         )
-                    for req, result in zip(group, results):
-                        if not req.future.done():
-                            req.future.set_result(result)
-                except Exception as e:
-                    for req in group:
-                        if not req.future.done():
-                            req.future.set_exception(e)
+                        await self._retry_individually(loop, group, max_tokens, temperature)
+            except asyncio.CancelledError:
+                # stop() arrived while this batch was being generated.
+                self._fail(batch, RuntimeError("Batcher stopped before this request finished"))
+                raise
+
+    async def _generate(self, loop, prompts: list[str], max_tokens: int, temperature: float) -> list[str]:
+        results = await loop.run_in_executor(
+            None,
+            lambda: self.engine.generate(prompts=prompts, max_tokens=max_tokens, temperature=temperature),
+        )
+        if len(results) != len(prompts):
+            # zip() would silently drop the extra requests and leave their futures pending forever.
+            raise _ResultCountMismatch(f"engine returned {len(results)} results for {len(prompts)} prompts")
+        return results
+
+    async def _retry_individually(self, loop, group: list[BatchRequest], max_tokens: int, temperature: float):
+        for req in group:
+            if req.future.done():
+                continue
+            try:
+                results = await self._generate(loop, [req.prompt], max_tokens, temperature)
+            except Exception as e:
+                self._fail([req], e)
+            else:
+                req.future.set_result(results[0])
+
+    @staticmethod
+    def _fail(requests: list[BatchRequest], error: BaseException) -> None:
+        for req in requests:
+            if not req.future.done():
+                req.future.set_exception(error)
